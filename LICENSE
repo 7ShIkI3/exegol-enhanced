@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2025 7ShIkI3
+Copyright (c) 2025 Exegol Enhanced Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +19,19 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+ADDITIONAL TERMS:
+
+This project is built upon and extends the excellent Exegol framework created by 
+@ShutdownRepo and contributors. We acknowledge and respect their original work.
+
+This software is intended for educational and authorized security testing purposes only.
+Users are responsible for complying with all applicable laws and regulations.
+The authors and contributors are not responsible for any misuse of this software.
+
+AI ASSISTANCE ACKNOWLEDGMENT:
+This project was developed with the assistance of artificial intelligence to optimize
+code quality, documentation, and user experience. The AI assistance was used to
+enhance development efficiency while maintaining human oversight and decision-making.

@@ -1,0 +1,272 @@
+# Exegol Enhanced - Docker Compose Configuration
+# Developed with AI assistance for optimal container orchestration
+# Version: 1.0.0
+
+version: '3.8'
+
+services:
+  # Main Exegol container with enhanced configuration
+  exegol-main:
+    image: nwodtuhs/exegol:latest
+    container_name: exegol-enhanced-main
+    hostname: exegol-enhanced
+    restart: unless-stopped
+    
+    # Network configuration
+    network_mode: host
+    
+    # Security configuration
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_ADMIN
+      - SYS_PTRACE
+    
+    # Environment variables
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - EXEGOL_ENHANCED=true
+      - WORKSPACE_DIR=/workspace
+      - TOOLS_DIR=/opt/tools
+      - TZ=${TZ:-UTC}
+    
+    # Volume mounts
+    volumes:
+      # Workspace directory
+      - ./workspace:/workspace:rw
+      - ./tools:/opt/exegol-enhanced:rw
+      - ./configs:/opt/exegol-enhanced/configs:ro
+      
+      # X11 forwarding for GUI applications
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${HOME}/.Xauthority:/root/.Xauthority:ro
+      
+      # Host networking tools
+      - /etc/hosts:/etc/hosts:ro
+      - /etc/resolv.conf:/etc/resolv.conf:ro
+      
+      # Persistent data
+      - exegol-home:/root:rw
+      - exegol-opt:/opt:rw
+      
+      # Docker socket for container management (optional)
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Custom entrypoint
+    entrypoint: ["/opt/exegol-enhanced/scripts/entrypoint.sh"]
+    
+    # Working directory
+    working_dir: /workspace
+    
+    # TTY and interactive
+    tty: true
+    stdin_open: true
+
+  # Web interface for Exegol Enhanced (optional)
+  exegol-web:
+    image: nginx:alpine
+    container_name: exegol-enhanced-web
+    restart: unless-stopped
+    
+    ports:
+      - "8080:80"
+    
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+      - ./configs/nginx.conf:/etc/nginx/nginx.conf:ro
+    
+    depends_on:
+      - exegol-main
+    
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
+  # Database for storing scan results and configurations
+  exegol-db:
+    image: postgres:15-alpine
+    container_name: exegol-enhanced-db
+    restart: unless-stopped
+    
+    environment:
+      - POSTGRES_DB=exegol_enhanced
+      - POSTGRES_USER=exegol
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-exegol_secure_password}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    
+    volumes:
+      - exegol-db-data:/var/lib/postgresql/data
+      - ./configs/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    
+    ports:
+      - "5432:5432"
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+    
+    # Health check
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U exegol -d exegol_enhanced"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis for caching and session management
+  exegol-redis:
+    image: redis:7-alpine
+    container_name: exegol-enhanced-redis
+    restart: unless-stopped
+    
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-exegol_redis_password}
+    
+    volumes:
+      - exegol-redis-data:/data
+    
+    ports:
+      - "6379:6379"
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # File server for sharing files
+  exegol-files:
+    image: filebrowser/filebrowser:latest
+    container_name: exegol-enhanced-files
+    restart: unless-stopped
+    
+    ports:
+      - "8081:80"
+    
+    volumes:
+      - ./workspace:/srv:rw
+      - ./configs/filebrowser.json:/config/settings.json:ro
+      - exegol-filebrowser-db:/database
+    
+    environment:
+      - FB_BASEURL=/files
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
+  # VNC server for remote GUI access
+  exegol-vnc:
+    image: consol/ubuntu-xfce-vnc:latest
+    container_name: exegol-enhanced-vnc
+    restart: unless-stopped
+    
+    ports:
+      - "5901:5901"
+      - "6901:6901"
+    
+    environment:
+      - VNC_PW=${VNC_PASSWORD:-exegol_vnc_password}
+      - VNC_RESOLUTION=1920x1080
+      - VNC_COL_DEPTH=24
+    
+    volumes:
+      - ./workspace:/workspace:rw
+      - exegol-vnc-home:/headless
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+
+# Named volumes for persistent data
+volumes:
+  exegol-home:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${HOME}/.exegol-enhanced/volumes/home
+  
+  exegol-opt:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${HOME}/.exegol-enhanced/volumes/opt
+  
+  exegol-db-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${HOME}/.exegol-enhanced/volumes/postgres
+  
+  exegol-redis-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${HOME}/.exegol-enhanced/volumes/redis
+  
+  exegol-filebrowser-db:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${HOME}/.exegol-enhanced/volumes/filebrowser
+
+# Networks
+networks:
+  default:
+    name: exegol-enhanced-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
+    driver_opts:
+      com.docker.network.bridge.name: exegol-br0
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+      com.docker.network.driver.mtu: 1500
